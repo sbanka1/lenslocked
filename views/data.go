@@ -21,6 +21,7 @@ type Alert struct {
 // to come in.
 type Data struct {
 	Alert *Alert
+	User  interface{}
 	Yield interface{}
 }
 
