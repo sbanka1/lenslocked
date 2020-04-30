@@ -7,11 +7,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+
 	"github.com/sbanka1/lenslocked/hash"
 	"github.com/sbanka1/lenslocked/rand"
 )
 
+// TODO: Conig this
 const userPwPepper = "lenslocked-secret-string"
 const hmacSecretKey = "lenslocked-hmac-key"
 
