@@ -38,7 +38,9 @@ type SignupForm struct {
 //
 // GET /signup
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	u.NewView.Render(w, r, nil)
+	var form SignupForm
+	parseURLParams(r, &form)
+	u.NewView.Render(w, r, form)
 }
 
 // Create is used to process the signup form where a user
@@ -48,6 +50,7 @@ func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form SignupForm
+	vd.Yield = &form
 	if err := parseForm(r, &form); err != nil {
 		vd.SetAlert(err)
 		u.NewView.Render(w, r, vd)
