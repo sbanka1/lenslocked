@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/sbanka1/lenslocked/controllers"
+	"github.com/sbanka1/lenslocked/email"
 	"github.com/sbanka1/lenslocked/middleware"
 	"github.com/sbanka1/lenslocked/models"
 	"github.com/sbanka1/lenslocked/rand"
@@ -29,9 +30,15 @@ func main() {
 	defer services.Close()
 	services.AutoMigrate()
 
+	mgCfg := cfg.Mailgun
+	emailer := email.NewClient(
+		email.WithSender("Support", "support@lenslocked.sbanka.io"),
+		email.WithMailgun(mgCfg.Domain, mgCfg.APIKey),
+	)
+
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(services.User)
+	usersC := controllers.NewUsers(services.User, emailer)
 	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
 
 	b, err := rand.Bytes(32)

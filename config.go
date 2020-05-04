@@ -43,6 +43,7 @@ type Config struct {
 	Pepper   string         `json:"pepper"`
 	HMACKey  string         `json:"hmac_key"`
 	Database PostgresConfig `json:"database"`
+	Mailgun  MailgunConfig  `json:"mailgun"`
 }
 
 func (c Config) IsProd() bool {
@@ -57,6 +58,12 @@ func DefaultConfig() Config {
 		HMACKey:  "lenslocked-hmac-key",
 		Database: DefaultPostgresConfig(),
 	}
+}
+
+type MailgunConfig struct {
+	APIKey       string `json:"api_key"`
+	PublicAPIKey string `json:"public_api_key"`
+	Domain       string `json:"domain"`
 }
 
 func LoadConfig(configReq bool) Config {
