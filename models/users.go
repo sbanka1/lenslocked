@@ -3,6 +3,7 @@ package models
 import (
 	"regexp"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -58,6 +59,11 @@ type UserService interface {
 	// ErrNotFound, ErrPasswordIncorrect, or another error if
 	// something goes wrong.
 	Authenticate(email, password string) (*User, error)
+	// InitiateReset will start the reset password process
+	// by creating a reset token for the user found with the
+	// provided email address.
+	InitiateReset(email string) (string, error)
+	CompleteReset(token, newPw string) (*User, error)
 	UserDB
 }
 
@@ -66,8 +72,9 @@ func NewUserService(db *gorm.DB, pepper, hmacKey string) UserService {
 	hmac := hash.NewHMAC(hmacKey)
 	uv := newUserValidator(ug, hmac, pepper)
 	return &userService{
-		UserDB: uv,
-		pepper: pepper,
+		UserDB:    uv,
+		pepper:    pepper,
+		pwResetDB: newPwResetValidator(&pwResetGorm{db}, hmac),
 	}
 }
 
@@ -75,7 +82,8 @@ var _ UserService = &userService{}
 
 type userService struct {
 	UserDB
-	pepper string
+	pepper    string
+	pwResetDB pwResetDB
 }
 
 // Authenticate can be used to authenticate a user with the
@@ -95,6 +103,44 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 		}
 	}
 	return foundUser, nil
+}
+
+func (us *userService) InitiateReset(email string) (string, error) {
+	user, err := us.ByEmail(email)
+	if err != nil {
+		return "", err
+	}
+	pwr := pwReset{
+		UserID: user.ID,
+	}
+	if err := us.pwResetDB.Create(&pwr); err != nil {
+		return "", err
+	}
+	return pwr.Token, nil
+}
+
+func (us *userService) CompleteReset(token, newPw string) (*User, error) {
+	pwr, err := us.pwResetDB.ByToken(token)
+	if err != nil {
+		if err == ErrNotFound {
+			return nil, ErrTokenInvalid
+		}
+		return nil, err
+	}
+	if time.Now().Sub(pwr.CreatedAt) > (12 * time.Hour) {
+		return nil, ErrTokenInvalid
+	}
+	user, err := us.ByID(pwr.UserID)
+	if err != nil {
+		return nil, err
+	}
+	user.Password = newPw
+	err = us.Update(user)
+	if err != nil {
+		return nil, err
+	}
+	err = us.pwResetDB.Delete(pwr.ID)
+	return user, nil
 }
 
 type userValFunc func(*User) error
