@@ -139,7 +139,7 @@ func (us *userService) CompleteReset(token, newPw string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = us.pwResetDB.Delete(pwr.ID)
+	us.pwResetDB.Delete(pwr.ID)
 	return user, nil
 }
 
@@ -185,7 +185,7 @@ func (uv *userValidator) ByEmail(email string) (*User, error) {
 }
 
 // ByRemember will hash the remember token and then call
-// ByRemember on the subsquent UserDB layer.
+// ByRemember on the subsequent UserDB layer.
 func (uv *userValidator) ByRemember(token string) (*User, error) {
 	user := User{
 		Remember: token,

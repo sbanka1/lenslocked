@@ -89,7 +89,7 @@ func layoutFiles() []string {
 }
 
 // addTemplatePath takes in a slice of strings
-// representing file paths for tempaltes, and it prepends
+// representing file paths for templates, and it prepends
 // the TemplateDir directory to each string in the slice
 //
 // Eg the input {"home"} would result in the output
@@ -101,7 +101,7 @@ func addTemplatePath(files []string) {
 }
 
 // addTemplatePath takes in a slice of strings
-// representing file paths for tempaltes, and it appends
+// representing file paths for templates, and it appends
 // the TemplateExt extension to each string in the slice
 //
 // Eg the input {"home"} would result in the output
