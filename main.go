@@ -32,7 +32,7 @@ func main() {
 
 	mgCfg := cfg.Mailgun
 	emailer := email.NewClient(
-		email.WithSender("Support", "support@lenslocked.sbanka.io"),
+		email.WithSender("Support", "sbanka@sbanka.io"),
 		email.WithMailgun(mgCfg.Domain, mgCfg.APIKey),
 	)
 

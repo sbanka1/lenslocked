@@ -80,7 +80,7 @@ type ClientConfig func(*Client)
 func NewClient(opts ...ClientConfig) *Client {
 	client := Client{
 		// Set a default from email address...
-		from: buildEmail("Saurabh Banka", "sbanka@lenslocked.sbanka.io"),
+		from: buildEmail("Saurabh Banka", "sbanka@sbanka.io"),
 	}
 	for _, opt := range opts {
 		opt(&client)

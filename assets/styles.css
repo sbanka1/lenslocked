@@ -6,3 +6,7 @@
 footer {
     padding-top: 60px;
 }
+
+.col-form-label {
+    text-align: right;
+}
