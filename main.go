@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"lenslocked/controllers"
+	"lenslocked/email"
+	"lenslocked/middleware"
+	"lenslocked/models"
+	"lenslocked/rand"
+
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
-	"github.com/sbanka1/lenslocked/controllers"
-	"github.com/sbanka1/lenslocked/email"
-	"github.com/sbanka1/lenslocked/middleware"
-	"github.com/sbanka1/lenslocked/models"
-	"github.com/sbanka1/lenslocked/rand"
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 
 	mgCfg := cfg.Mailgun
 	emailer := email.NewClient(
-		email.WithSender("Support", "sbanka@sbanka.io"),
+		email.WithSender("Saurabh Banka", "sbanka@sbanka.io"),
 		email.WithMailgun(mgCfg.Domain, mgCfg.APIKey),
 	)
 

@@ -2,8 +2,8 @@ package models
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/sbanka1/lenslocked/hash"
-	"github.com/sbanka1/lenslocked/rand"
+	"lenslocked/hash"
+	"lenslocked/rand"
 )
 
 type pwReset struct {

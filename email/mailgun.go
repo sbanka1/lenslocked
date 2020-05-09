@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/mailgun/mailgun-go"
+	"github.com/mailgun/mailgun-go/v4"
 )
 
 const (

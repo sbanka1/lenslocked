@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"github.com/sbanka1/lenslocked/views"
+	"lenslocked/views"
 )
 
 func NewStatic() *Static {

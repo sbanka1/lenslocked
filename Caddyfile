@@ -1,6 +1,0 @@
-lenslocked.sbanka.io {
-    gzip
-    proxy / localhost:3000 {
-        transparent
-    }
-}

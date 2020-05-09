@@ -7,9 +7,9 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/sbanka1/lenslocked/context"
-	"github.com/sbanka1/lenslocked/models"
-	"github.com/sbanka1/lenslocked/views"
+	"lenslocked/context"
+	"lenslocked/models"
+	"lenslocked/views"
 )
 
 const (

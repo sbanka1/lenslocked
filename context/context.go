@@ -3,7 +3,7 @@ package context
 import (
 	"context"
 
-	"github.com/sbanka1/lenslocked/models"
+	"lenslocked/models"
 )
 
 const userKey privateKey = "user"

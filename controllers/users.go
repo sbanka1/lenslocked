@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sbanka1/lenslocked/context"
-	"github.com/sbanka1/lenslocked/email"
-	"github.com/sbanka1/lenslocked/models"
-	"github.com/sbanka1/lenslocked/rand"
-	"github.com/sbanka1/lenslocked/views"
+	"lenslocked/context"
+	"lenslocked/email"
+	"lenslocked/models"
+	"lenslocked/rand"
+	"lenslocked/views"
 )
 
 func NewUsers(us models.UserService, emailer *email.Client) *Users {

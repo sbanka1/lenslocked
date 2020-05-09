@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sbanka1/lenslocked/context"
-	"github.com/sbanka1/lenslocked/models"
+	"lenslocked/context"
+	"lenslocked/models"
 )
 
 type User struct {

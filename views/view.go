@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/gorilla/csrf"
-	"github.com/sbanka1/lenslocked/context"
+	"lenslocked/context"
 )
 
 var (
