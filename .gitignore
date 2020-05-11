@@ -2,3 +2,4 @@
 lenslocked
 images/**
 .config
+.vscode/**

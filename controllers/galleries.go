@@ -1,15 +1,20 @@
 package controllers
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
-	"github.com/gorilla/mux"
 	"lenslocked/context"
 	"lenslocked/models"
 	"lenslocked/views"
+
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -185,6 +190,52 @@ func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/galleries", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
+}
+
+// POST /galleries/:id/images
+func (g *Galleries) WebcamImageUpload(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "Gallery not found", http.StatusNotFound)
+		return
+	}
+
+	var vd views.Data
+	vd.Yield = gallery
+	err = r.ParseMultipartForm(maxMultipartMem)
+	if err != nil {
+		vd.SetAlert(err)
+		g.EditView.Render(w, r, vd)
+		return
+	}
+
+	imgByte := r.PostFormValue("images")
+	b64 := imgByte[strings.IndexByte(imgByte, ',')+1:]
+	decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(b64))
+
+	timeLayout := "2006-01-02-150405.png"
+	fileName := time.Now().Format(timeLayout)
+
+	// TODO: Use png package to save files and move save logic to image controller
+	decoderCloser := ioutil.NopCloser(decoder)
+	err = g.is.Create(gallery.ID, decoderCloser, fileName)
+	if err != nil {
+		vd.SetAlert(err)
+		g.EditView.Render(w, r, vd)
+		return
+	}
+
 	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
 	if err != nil {
 		log.Println(err)
