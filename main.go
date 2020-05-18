@@ -13,12 +13,14 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"golang.org/x/oauth2"
 )
 
 func main() {
 	boolPtr := flag.Bool("prod", false, "Provide this flag in production. This ensures that a .config file is provided before the application starts.")
 	flag.Parse()
 	cfg := LoadConfig(*boolPtr)
+	fmt.Println(cfg.Dropbox)
 	dbCfg := cfg.Database
 	services, err := models.NewServices(
 		models.WithGorm(dbCfg.Dialect(), dbCfg.ConnectionInfo()),
@@ -51,6 +53,30 @@ func main() {
 	requireUserMw := middleware.RequireUser{
 		User: userMw,
 	}
+
+	dbxOAuth := &oauth2.Config{
+		ClientID:     cfg.Dropbox.ID,
+		ClientSecret: cfg.Dropbox.Secret,
+		Endpoint: oauth2.Endpoint{
+			TokenURL: cfg.Dropbox.TokenURL,
+			AuthURL:  cfg.Dropbox.AuthURL,
+		},
+		RedirectURL: "http://localhost:3000/oauth/dropbox/callback",
+	}
+
+	dbxRedirect := func(w http.ResponseWriter, r *http.Request) {
+		state := csrf.Token(r)
+		url := dbxOAuth.AuthCodeURL(state)
+		fmt.Println(state)
+		http.Redirect(w, r, url, http.StatusFound)
+	}
+	r.HandleFunc("/oauth/dropbox/connect", dbxRedirect).Methods("GET")
+
+	dbxCallback := func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		fmt.Fprintln(w, "code: ", r.FormValue("code"), " state: ", r.FormValue("state"))
+	}
+	r.HandleFunc("/oauth/dropbox/callback", dbxCallback).Methods("GET")
 
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
