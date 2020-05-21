@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
+	"time"
 
+	llctx "lenslocked/context"
 	"lenslocked/controllers"
 	"lenslocked/email"
 	"lenslocked/middleware"
@@ -20,7 +23,6 @@ func main() {
 	boolPtr := flag.Bool("prod", false, "Provide this flag in production. This ensures that a .config file is provided before the application starts.")
 	flag.Parse()
 	cfg := LoadConfig(*boolPtr)
-	fmt.Println(cfg.Dropbox)
 	dbCfg := cfg.Database
 	services, err := models.NewServices(
 		models.WithGorm(dbCfg.Dialect(), dbCfg.ConnectionInfo()),
@@ -28,6 +30,7 @@ func main() {
 		models.WithUser(cfg.Pepper, cfg.HMACKey),
 		models.WithGallery(),
 		models.WithImage(),
+		models.WithOAuth(),
 	)
 	must(err)
 	defer services.Close()
@@ -67,16 +70,60 @@ func main() {
 	dbxRedirect := func(w http.ResponseWriter, r *http.Request) {
 		state := csrf.Token(r)
 		url := dbxOAuth.AuthCodeURL(state)
-		fmt.Println(state)
+		cookie := http.Cookie{
+			Name:  "oauth_state",
+			Value: state,
+		}
+		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, url, http.StatusFound)
 	}
-	r.HandleFunc("/oauth/dropbox/connect", dbxRedirect).Methods("GET")
+	r.HandleFunc("/oauth/dropbox/connect", requireUserMw.ApplyFn(dbxRedirect)).Methods("GET")
 
 	dbxCallback := func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		fmt.Fprintln(w, "code: ", r.FormValue("code"), " state: ", r.FormValue("state"))
+		state := r.FormValue("state")
+		cookie, err := r.Cookie("oauth_state")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		} else if cookie == nil || cookie.Value != state {
+			http.Error(w, "Incorrect state provided", http.StatusBadRequest)
+			return
+		}
+		cookie.Value = ""
+		cookie.Expires = time.Now()
+		http.SetCookie(w, cookie)
+
+		code := r.FormValue("code")
+		token, err := dbxOAuth.Exchange(context.TODO(), code)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		user := llctx.User(r.Context())
+		existing, err := services.OAuth.Find(user.ID, models.OAuthDropbox)
+		if err == models.ErrNotFound {
+			//noop
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		} else {
+			services.OAuth.Delete(existing.ID)
+		}
+		userOAuth := models.OAuth{
+			UserID:  user.ID,
+			Token:   *token,
+			Service: models.OAuthDropbox,
+		}
+		err = services.OAuth.Create(&userOAuth)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintf(w, "%+v", token)
+
 	}
-	r.HandleFunc("/oauth/dropbox/callback", dbxCallback).Methods("GET")
+	r.HandleFunc("/oauth/dropbox/callback", requireUserMw.ApplyFn(dbxCallback)).Methods("GET")
 
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
