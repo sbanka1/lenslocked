@@ -1,13 +1,10 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"net/http"
-	"time"
 
-	llctx "lenslocked/context"
 	"lenslocked/controllers"
 	"lenslocked/email"
 	"lenslocked/middleware"
@@ -47,6 +44,18 @@ func main() {
 	usersC := controllers.NewUsers(services.User, emailer)
 	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
 
+	configs := make(map[string]*oauth2.Config)
+	configs[models.OAuthDropbox] = &oauth2.Config{
+		ClientID:     cfg.Dropbox.ID,
+		ClientSecret: cfg.Dropbox.Secret,
+		Endpoint: oauth2.Endpoint{
+			TokenURL: cfg.Dropbox.TokenURL,
+			AuthURL:  cfg.Dropbox.AuthURL,
+		},
+		RedirectURL: "http://localhost:3000/oauth/dropbox/callback",
+	}
+	oauthC := controllers.NewOAuths(services.OAuth, configs)
+
 	b, err := rand.Bytes(32)
 	must(err)
 	csrfMw := csrf.Protect(b, csrf.Secure(cfg.IsProd()))
@@ -56,74 +65,6 @@ func main() {
 	requireUserMw := middleware.RequireUser{
 		User: userMw,
 	}
-
-	dbxOAuth := &oauth2.Config{
-		ClientID:     cfg.Dropbox.ID,
-		ClientSecret: cfg.Dropbox.Secret,
-		Endpoint: oauth2.Endpoint{
-			TokenURL: cfg.Dropbox.TokenURL,
-			AuthURL:  cfg.Dropbox.AuthURL,
-		},
-		RedirectURL: "http://localhost:3000/oauth/dropbox/callback",
-	}
-
-	dbxRedirect := func(w http.ResponseWriter, r *http.Request) {
-		state := csrf.Token(r)
-		url := dbxOAuth.AuthCodeURL(state)
-		cookie := http.Cookie{
-			Name:  "oauth_state",
-			Value: state,
-		}
-		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, url, http.StatusFound)
-	}
-	r.HandleFunc("/oauth/dropbox/connect", requireUserMw.ApplyFn(dbxRedirect)).Methods("GET")
-
-	dbxCallback := func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		state := r.FormValue("state")
-		cookie, err := r.Cookie("oauth_state")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		} else if cookie == nil || cookie.Value != state {
-			http.Error(w, "Incorrect state provided", http.StatusBadRequest)
-			return
-		}
-		cookie.Value = ""
-		cookie.Expires = time.Now()
-		http.SetCookie(w, cookie)
-
-		code := r.FormValue("code")
-		token, err := dbxOAuth.Exchange(context.TODO(), code)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		user := llctx.User(r.Context())
-		existing, err := services.OAuth.Find(user.ID, models.OAuthDropbox)
-		if err == models.ErrNotFound {
-			//noop
-		} else if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		} else {
-			services.OAuth.Delete(existing.ID)
-		}
-		userOAuth := models.OAuth{
-			UserID:  user.ID,
-			Token:   *token,
-			Service: models.OAuthDropbox,
-		}
-		err = services.OAuth.Create(&userOAuth)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		fmt.Fprintf(w, "%+v", token)
-
-	}
-	r.HandleFunc("/oauth/dropbox/callback", requireUserMw.ApplyFn(dbxCallback)).Methods("GET")
 
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
@@ -136,6 +77,11 @@ func main() {
 	r.HandleFunc("/forgot", usersC.InitiateReset).Methods("POST")
 	r.HandleFunc("/reset", usersC.ResetPw).Methods("GET")
 	r.HandleFunc("/reset", usersC.CompleteReset).Methods("POST")
+
+	// OAuth Routes
+	r.HandleFunc("/oauth/{service:[a-z]+}/connect", requireUserMw.ApplyFn(oauthC.Connect)).Methods("GET")
+	r.HandleFunc("/oauth/{service:[a-z]+}/callback", requireUserMw.ApplyFn(oauthC.Callback)).Methods("GET")
+	r.HandleFunc("/oauth/dropbox/test", requireUserMw.ApplyFn(oauthC.DropboxTest))
 
 	// Assets
 	assetHandler := http.FileServer(http.Dir("./assets/"))
