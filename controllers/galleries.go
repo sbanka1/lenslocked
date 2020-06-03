@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"lenslocked/context"
@@ -190,6 +191,55 @@ func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/galleries", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
+}
+
+// POST /galleries/:id/images/link
+func (g *Galleries) ImageViaLink(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "Gallery not found", http.StatusNotFound)
+		return
+	}
+
+	var vd views.Data
+	vd.Yield = gallery
+	if err := r.ParseForm(); err != nil {
+		vd.SetAlert(err)
+		g.EditView.Render(w, r, vd)
+		return
+	}
+	files := r.PostForm["files"]
+
+	var wg sync.WaitGroup
+	wg.Add(len(files))
+	for _, fileURL := range files {
+		go func(url string) {
+			defer wg.Done()
+			resp, err := http.Get(url)
+			if err != nil {
+				log.Println("Failed to download the image from: ", url)
+				return
+			}
+			defer resp.Body.Close()
+			pieces := strings.Split(url, "/")
+			filename := pieces[len(pieces)-1]
+			if err := g.is.Create(gallery.ID, resp.Body, filename); err != nil {
+				log.Println("Failed to create the image from: ", url)
+			}
+		}(fileURL)
+	}
+	wg.Wait()
 	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
 	if err != nil {
 		log.Println(err)
