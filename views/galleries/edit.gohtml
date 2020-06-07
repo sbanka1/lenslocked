@@ -27,14 +27,19 @@
         </div>
     </div>
     <div class="row">
-        <div class="col-lg-12 mt-3">
-            {{template "captureWebcamForm" .}}
+        <div class="col-lg-1">
+            <label class="col-form-label float-right">
+                Upload Images from Dropbox
+            </label>
+        </div>
+        <div class="col-lg-10" id="dropbox-button-container">
+            <!-- DBX Button -->
+            {{template "dropboxImageForm" .}}
         </div>
     </div>
     <div class="row">
-        <div class="col-lg-10 offset-lg-1" id="dropbox-button-container">
-            <!-- DBX Button -->
-            {{template "dropboxImageForm" .}}
+        <div class="col-lg-12 mt-3">
+            {{template "captureWebcamForm" .}}
         </div>
     </div>
     <div class="row">
@@ -112,7 +117,7 @@
     <form action="/galleries/{{.ID}}/images" method="POST" enctype="multipart/form-data" class="form-horizontal">
         {{csrfField}}
         <div class="form-group row">
-            <label for="images" class="col-lg-1 col-form-label">Upload new images</label>
+            <label for="images" class="col-lg-1 col-form-label">Upload New Images</label>
             <div class="col-lg-10">
                 <input type="file" multiple="multiple" id="images" name="images">
                 <p class="help-block">Please only use jpg, jpeg and png</p>
@@ -126,7 +131,7 @@
     <form action="/galleries/{{.ID}}/webcam" method="POST" enctype="multipart/form-data" class="form-horizontal">
         {{csrfField}}
         <div class="form-group row">
-            <label for="images" class="col-lg-1 col-form-label">Capture image from webcam</label>
+            <label for="images" class="col-lg-1 col-form-label">Capture Image From Webcam</label>
             <div class="camera col-lg-3">
                 <video id="video">Video stream not available.</video>
                 <button id="permissionbutton">Turn on webcam</button>
